@@ -25,6 +25,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add api/revisao
+          git rm -q --ignore-unmatch api/revisao
+          git add api/revisao.json
           git diff --cached --quiet || git commit -m "chore: atualiza /api/revisao"
           git push
