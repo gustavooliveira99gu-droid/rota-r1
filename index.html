@@ -1422,8 +1422,6 @@ function topicDomain(t,s){
   let tw=0,sum=0; last.forEach((h,i)=>{const w=i+1,a=h.q?h.c/h.q*100:null; if(a==null)return; sum+=a*w; tw+=w;});
   let acc=tw?sum/tw:null;
   if(acc!=null&&t.lastRevAcc!=null) acc=acc*0.6+t.lastRevAcc*0.4;
-  const oe=openErrorsBy()[t.id]||0;
-  if(oe>=3&&acc!=null&&acc>=DOM_TH.low) acc=DOM_TH.low-1;
   if(acc==null) return {k:'none',ico:'',label:'Em estudo'};
   const k=acc<DOM_TH.low?'red':acc<DOM_TH.high?'yellow':'green';
   return {k,ico:k==='red'?'🔴':k==='yellow'?'🟡':'🟢',label:k==='red'?'Fraco':k==='yellow'?'Em consolidação':'Bom domínio',acc:Math.round(acc)};
