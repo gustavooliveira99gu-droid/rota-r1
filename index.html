@@ -628,10 +628,35 @@ const Sync={
 let syncState=['warn','Sincronização desligada'];
 function setSync(k,t){syncState=[k,t];['syncline','syncline2'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=`<span class="dot ${k}"></span>${esc(t)}`})}
 
+/* ---- integração Atalhos (iPad): abre o Caderno de Erros pré-preenchido via querystring ---- */
+let QP_ERR=null;
+const normTxt=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+function matchTopicByText(temaQ,subQ){
+  const nt=normTxt(temaQ), ns=normTxt(subQ), all=topics();
+  let hit=(nt&&ns)?all.find(t=>normTxt(t.tema).includes(nt)&&normTxt(t.sub).includes(ns)):null;
+  if(!hit&&ns) hit=all.find(t=>normTxt(t.sub).includes(ns));
+  if(!hit&&nt) hit=all.find(t=>normTxt(t.tema).includes(nt));
+  return hit?hit.id:'';
+}
+function readErrQuery(){
+  const sp=new URLSearchParams(location.search);
+  const keys=['tema','subtema','conceito','pegadinha','anotacao','questao'];
+  if(!keys.some(k=>sp.has(k))) return;
+  QP_ERR={
+    topicId:matchTopicByText(sp.get('tema'),sp.get('subtema')),
+    conceito:sp.get('conceito')||'',
+    pegadinha:sp.get('pegadinha')||'',
+    nota:sp.get('anotacao')||'',
+    questao:sp.get('questao')||''
+  };
+}
+
 async function boot(){
   loadLocal();
   S.config=mergeCfg(S.config);
   if(!S.topics||!S.topics.length) S.topics=seedTopics();
+  readErrQuery();
+  if(QP_ERR) location.hash='erros';
   Sync.load();
   render();
   if(Sync.on()){ S.mode='cloud'; await Sync.run(true); }
@@ -905,16 +930,17 @@ function questionForm(px,sel){
   </div>
   <div class="btns"><button class="btn pri" data-act="save-q" data-px="${px}">Registrar questões</button><span class="small muted" id="${px}-calc" data-keep="no"></span></div>`;
 }
-function errorForm(px,sel){
+function errorForm(px,sel,pref){
+  pref=pref||{};
   return `<div class="form">
     <label class="f wide">Tema / subtema<select id="${px}-topic">${topicOptions(sel)}</select></label>
     <label class="f">Prova<select id="${px}-exam">${examOptions(nextExam()?.id)}</select></label>
-    <label class="f">Questão (ano / nº)<input type="text" id="${px}-questao" placeholder="SCMRP 2025 · Q37"></label>
+    <label class="f">Questão (ano / nº)<input type="text" id="${px}-questao" placeholder="SCMRP 2025 · Q37" value="${esc(pref.questao||'')}"></label>
     <label class="f">Motivo do erro<select id="${px}-motivo">${MOTIVOS.map(m=>`<option>${m}</option>`).join('')}</select></label>
     <label class="f">Data<input type="date" id="${px}-date" value="${today()}"></label>
-    <label class="f wide">Conceito correto<textarea id="${px}-conceito" placeholder="O que é certo, em uma frase"></textarea></label>
-    <label class="f">Pegadinha<input type="text" id="${px}-pegadinha" placeholder="O que a banca tentou induzir"></label>
-    <label class="f">Anotação curta<input type="text" id="${px}-nota"></label>
+    <label class="f wide">Conceito correto<textarea id="${px}-conceito" placeholder="O que é certo, em uma frase">${esc(pref.conceito||'')}</textarea></label>
+    <label class="f">Pegadinha<input type="text" id="${px}-pegadinha" placeholder="O que a banca tentou induzir" value="${esc(pref.pegadinha||'')}"></label>
+    <label class="f">Anotação curta<input type="text" id="${px}-nota" value="${esc(pref.nota||'')}"></label>
   </div>
   <div class="btns"><button class="btn io" data-act="save-err" data-px="${px}">Adicionar ao caderno</button><span class="small muted">Revisão automática em D+${cfg().intervals[0]}</span></div>`;
 }
@@ -948,7 +974,7 @@ VIEWS.erros=()=>{
   :`<div class="empty">${f==='hoje'?'Nada para revisar hoje.':'Nenhum erro nesta lista.'}</div>`}
   </section>
   <div class="grid" style="align-content:start">
-  <section class="card"><h2>Novo erro</h2>${errorForm('e','')}</section>
+  <section class="card"><h2>Novo erro</h2>${QP_ERR?`<div class="note">Preenchido a partir do Atalhos — confira e ajuste antes de salvar.</div>`:''}${errorForm('e',QP_ERR?QP_ERR.topicId:'',QP_ERR)}</section>
   <section class="card"><h2>Por que eu erro</h2>${Object.keys(mot).length?`<div class="bars">${Object.entries(mot).sort((a,b)=>b[1]-a[1]).map(([m,n])=>`<div class="bar"><span>${esc(m||'sem motivo')}</span><span class="track"><i style="width:${n/mmax*100}%;background:var(--iodine)"></i></span><span class="v">${n}</span></div>`).join('')}</div>`:'<div class="empty">Sem dados ainda.</div>'}</section>
   </div></div>`;
 };
@@ -1194,6 +1220,7 @@ const ACT={
     const o={topicId,exam:val(px+'-exam'),questao:val(px+'-questao'),motivo:val(px+'-motivo'),conceito:val(px+'-conceito'),pegadinha:val(px+'-pegadinha'),nota:val(px+'-nota'),date:val(px+'-date')||today()};
     addError(o);
     clearForm([px+'-questao',px+'-conceito',px+'-pegadinha',px+'-nota']);
+    if(px==='e'&&QP_ERR){ QP_ERR=null; history.replaceState(null,'',location.pathname+location.hash); }
     toast('Erro adicionado. Revisão em '+fmtL(addD(today(),cfg().intervals[0]))+'.'); render();
   },
   'err-ok'(el){ if(readOnlyGuard()) return; reviewError(el.dataset.id,true); toast('Boa. Intervalo aumentado.') },
