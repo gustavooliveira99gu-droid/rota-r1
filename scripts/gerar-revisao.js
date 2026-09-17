@@ -1,5 +1,5 @@
 // ============================================================
-// Rota R1 - Gerador da rota /api/revisao
+// Rota R1 - Gerador da rota /api/revisao.json
 // Roda via GitHub Action (não altera o app principal do Dashboard)
 // ============================================================
 
@@ -111,12 +111,12 @@ async function principal() {
 
   const dirApi = path.join(__dirname, "..", "api");
   fs.mkdirSync(dirApi, { recursive: true });
-  fs.writeFileSync(path.join(dirApi, "revisao"), JSON.stringify(resultado, null, 2));
+  fs.writeFileSync(path.join(dirApi, "revisao.json"), JSON.stringify(resultado, null, 2));
 
-  console.log("Gerado /api/revisao:", resultado);
+  console.log("Gerado /api/revisao.json:", resultado);
 }
 
 principal().catch((e) => {
-  console.error("Erro ao gerar /api/revisao:", e);
+  console.error("Erro ao gerar /api/revisao.json:", e);
   process.exit(1);
 });
